@@ -1,0 +1,209 @@
+import streamlit as st
+import pandas as pd
+from calendar_manager import get_shabbats_for_year
+import db_manager
+import datetime
+from pyluach import hebrewcal
+
+st.set_page_config(page_title="סבב רב", layout="wide")
+
+# RTL CSS Injection & Styling
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&display=swap');
+
+    body, .stApp {
+        direction: rtl;
+        font-family: 'Frank Ruhl Libre', serif;
+        background-color: #faf9f6; /* צבע רקע קרם עדין - דמוי קלף */
+    }
+    .stSelectbox label, div[data-testid="stDataFrame"] {
+        direction: rtl;
+        font-family: 'Frank Ruhl Libre', serif;
+    }
+    /* מרכוז כל הכותרות והטקסטים ושינוי צבעים */
+    h1, h2, h3, h4, p, .stMarkdown {
+        text-align: center !important;
+        font-family: 'Frank Ruhl Libre', serif;
+    }
+    h1 {
+        color: #0f2557 !important; /* כחול עמוק */
+        text-shadow: 1px 1px 2px rgba(212, 175, 55, 0.3); /* צל זהב עדין */
+        padding-bottom: 10px;
+        border-bottom: 2px solid #d4af37; /* קו זהב תחתון */
+        margin-bottom: 20px;
+    }
+    h3 {
+        color: #1a3673 !important;
+    }
+    /* עיצוב כפתורים בסגנון תורני/מזמין */
+    .stButton > button {
+        background-color: #0f2557 !important;
+        color: #ffffff !important;
+        border: 1px solid #d4af37 !important;
+        border-radius: 8px !important;
+        font-family: 'Frank Ruhl Libre', serif;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .stButton > button:hover {
+        background-color: #d4af37 !important;
+        color: #0f2557 !important;
+        border: 1px solid #0f2557 !important;
+    }
+    .main .block-container {
+        max-width: 1200px;
+        padding-top: 2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("סבב הרב משה ביגל שליט״א")
+
+db_manager.init_db()
+
+# Year selector
+def format_year(y):
+    return f"{hebrewcal.Year(y).year_string()} ({y})"
+
+# מרכוז שדה הבחירה
+col_space1, col_center, col_space3 = st.columns([1, 2, 1])
+with col_center:
+    selected_year = st.selectbox("בחר שנת לוח:", range(5785, 5800), index=2, format_func=format_year)
+
+shabbats = get_shabbats_for_year(selected_year)
+
+year_str_hebrew = shabbats[0]['year_str'] if shabbats else ""
+st.subheader(f"לוח שבתות וחגים לשנת {year_str_hebrew}")
+
+# We will build a list of dictionaries for the dataframe
+data = []
+for i, sh in enumerate(shabbats):
+    date_str = sh['hebrew_date_str']
+    greg_str = sh['gregorian_date'].strftime("%d-%m-%Y")
+    
+    event = sh['parsha']
+    if not event and sh['holiday']:
+        event = sh['holiday']
+    elif sh['holiday']:
+        event += f" ({sh['holiday']})"
+        
+    notes = "שבת מברכין" if sh['is_mevarchim'] else ""
+    
+    # שבת הגדול - השבת שלפני פסח (חלה תמיד בניסן בין ה-8 ל-14 לחודש)
+    # חודש ניסן הוא חודש 1 בספריית pyluach
+    if sh['date'].month == 1 and 8 <= sh['date'].day <= 14:
+        if notes:
+            notes += " | דרשת שבת הגדול"
+        else:
+            notes = "דרשת שבת הגדול"
+            
+    # מציאת המיקום של השבת הנוכחית בתוך החודש העברי
+    month_shabbats_before = 0
+    is_saturday = (sh['date'].weekday() == 7)
+    
+    if is_saturday:
+        for j in range(i - 1, -1, -1):
+            if shabbats[j]['date'].weekday() == 7:
+                if shabbats[j]['date'].month == sh['date'].month:
+                    month_shabbats_before += 1
+                else:
+                    break
+    
+    # Check DB for assignment
+    assignment = db_manager.get_assignment(sh['date'].year, sh['date'].month, sh['date'].day)
+    
+    if assignment:
+        fn = assignment['friday_night']
+        sm = assignment['shabbat_morning']
+        ss = assignment['seuda_shlishit']
+    else:
+        # Default Logic
+        if "כי תבא" in event or "כי תבוא" in event or "נצבים" in event or "וילך" in event:
+            fn, sm, ss = "", "", ""
+        elif "כיפור" in event:
+            fn, sm, ss = "מרכזי", "מרכזי", "/"
+        elif sh['is_mevarchim']:
+            fn, sm, ss = "חב״ד", "מרכזי", "כלניות"
+        elif is_saturday:
+            if month_shabbats_before == 0:
+                fn, sm, ss = "רבין/מרגלית", "אור שלום", "אהבת ישראל"
+            elif month_shabbats_before == 1:
+                fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
+            elif month_shabbats_before == 2:
+                fn, sm, ss = "דרכי נועם", "אהבת ישראל", "דרכי נועם"
+            elif month_shabbats_before == 3:
+                fn, sm, ss = "נעימת חיים", "הרשטוק", "צפוני"
+            else:
+                fn, sm, ss = "נעימת חיים", "תימני", "צפוני"
+        else:
+            fn, sm, ss = "", "", ""
+            
+        # חסימת סעודה שלישית בחגים ספציפיים
+        if "ראש השנה" in event or "עצרת" in event or "שמחת תורה" in event or "פסח" in event or "שבועות" in event:
+            ss = "/"
+            
+    data.append({
+        "Year": sh['date'].year,
+        "Month": sh['date'].month,
+        "Day": sh['date'].day,
+        "פרשה/מועד": event,
+        "תאריך עברי": date_str,
+        "תאריך לועזי": greg_str,
+        "כניסת שבת/חג": sh['candles'],
+        "צאת שבת/חג": sh['havdalah'],
+        "ליל שבת": fn,
+        "שבת שחרית": sm,
+        "סעודה שלישית": ss,
+        "הערות": notes
+    })
+
+df = pd.DataFrame(data)
+display_cols = ["הערות", "סעודה שלישית", "שבת שחרית", "ליל שבת", "צאת שבת/חג", "כניסת שבת/חג", "תאריך לועזי", "תאריך עברי", "פרשה/מועד"]
+
+def style_blocked_cells(val):
+    if val == "/":
+        return "background-color: #e8e8e8; color: #a0a0a0; font-weight: bold;"
+    return ""
+
+# עיצוב הטבלה שכל הטקסטים יהיו במרכז וצביעת תאים חסומים
+styled_df = df[display_cols].style.set_properties(**{'text-align': 'center'}).map(style_blocked_cells)
+
+# חישוב גובה דינמי כדי שהטבלה תוצג במלואה ללא גלילה פנימית
+# כ-35 פיקסלים לכל שורה + 45 פיקסלים לכותרת העליונה
+dynamic_height = (len(df) * 35) + 45
+
+st.dataframe(styled_df, use_container_width=True, height=dynamic_height, hide_index=True)
+
+st.markdown("---")
+
+# שורת כפתורי פעולה - 3 עמודות בלבד כדי למלא את כל הרוחב ביחס לטבלה
+col1, col2, col3 = st.columns(3)
+
+@st.dialog("✏️ עריכת שיבוץ")
+def edit_dialog():
+    selected_event = st.selectbox("בחר שבת לעריכה:", df["פרשה/מועד"].tolist())
+    if selected_event:
+        row = df[df["פרשה/מועד"] == selected_event].iloc[0]
+        st.write(f"**שיבוץ נוכחי ל{selected_event}:**")
+        new_fn = st.text_input("ליל שבת", value=row["ליל שבת"])
+        new_sm = st.text_input("שבת שחרית", value=row["שבת שחרית"])
+        new_ss = st.text_input("סעודה שלישית", value=row["סעודה שלישית"])
+        
+        if st.button("שמור שינויים", type="primary"):
+            db_manager.save_assignment(
+                int(row["Year"]), int(row["Month"]), int(row["Day"]),
+                selected_event, new_fn, new_sm, new_ss
+            )
+            st.success("נשמר בהצלחה!")
+            st.rerun()
+
+with col1:
+    if st.button("✏️ עריכת שיבוץ", use_container_width=True):
+        edit_dialog()
+with col2:
+    st.button("🖨️ הדפסת הלוח", use_container_width=True)
+with col3:
+    st.button("✉️ שליחת הלוח", use_container_width=True)
+
+# Trigger Auto-Reload

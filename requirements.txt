@@ -1,0 +1,6 @@
+streamlit
+pandas
+pyluach
+openpyxl
+pytest
+requests
