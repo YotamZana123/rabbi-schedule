@@ -237,20 +237,36 @@ def edit_dialog():
             st.success("נשמר בהצלחה!")
             st.rerun()
 
+# CSS שיכריח את העמודות להישאר בשורה אחת אופקית גם במובייל
+st.markdown("""
+<style>
+@media (max-width: 768px) {
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    div[data-testid="column"] {
+        width: 33% !important;
+        flex: 1 1 calc(33% - 1rem) !important;
+        min-width: 33% !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # הצגת הכפתורים מתחת לבחירת השנה, לפני החודשים
 st.markdown("<br>", unsafe_allow_html=True)
 btn_col1, btn_col2, btn_col3 = st.columns(3)
 
 with btn_col1:
-    if st.button("✏️ עריכת שיבוץ", use_container_width=True):
+    if st.button("✏️", help="עריכת שיבוץ", use_container_width=True):
         edit_dialog()
 
 with btn_col2:
-    if st.button("⬇️ הורדת PDF (בקרוב)", use_container_width=True):
+    if st.button("📥", help="הורדת הלוח ל-PDF", use_container_width=True):
         st.info("בקרוב - הורדה להדפסה")
 
 with btn_col3:
-    if st.button("💬 שליחה בוואטסאפ (בקרוב)", use_container_width=True):
+    if st.button("💬", help="שליחה בוואטסאפ", use_container_width=True):
         st.info("בקרוב - שליחה בוואטסאפ")
 
 st.markdown("<br>", unsafe_allow_html=True)
