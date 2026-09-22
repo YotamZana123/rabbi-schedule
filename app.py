@@ -216,17 +216,8 @@ def generate_html_table(df):
     html += "</tbody></table>"
     return html
 
-# יצירת כרטיסיות לפי חודשים
+# יצירת כפתורי הרחבה (Expanders) לפי חודשים
 unique_months = df['Month_Name'].unique()
-tabs = st.tabs(list(unique_months))
-
-for i, tab in enumerate(tabs):
-    with tab:
-        month_df = df[df['Month_Name'] == unique_months[i]]
-        st.html(generate_html_table(month_df))
-
-# העברת הכפתורים לסיידבר
-st.sidebar.markdown("### פעולות")
 
 @st.dialog("✏️ עריכת שיבוץ")
 def edit_dialog():
@@ -246,11 +237,25 @@ def edit_dialog():
             st.success("נשמר בהצלחה!")
             st.rerun()
 
-if st.sidebar.button("✏️ עריכת שיבוץ", use_container_width=True):
-    edit_dialog()
+# הצגת הכפתורים מתחת לבחירת השנה, לפני החודשים
+st.markdown("<br>", unsafe_allow_html=True)
+btn_col1, btn_col2, btn_col3 = st.columns(3)
 
-if st.sidebar.button("⬇️ הורדת PDF (בקרוב)", use_container_width=True):
-    st.sidebar.info("כפתור זה יאפשר הורדה של הלוח להדפסה.")
+with btn_col1:
+    if st.button("✏️ עריכת שיבוץ", use_container_width=True):
+        edit_dialog()
 
-if st.sidebar.button("💬 שליחה בוואטסאפ (בקרוב)", use_container_width=True):
-    st.sidebar.info("כפתור זה יאפשר שליחה מהירה של הלוח בוואטסאפ.")
+with btn_col2:
+    if st.button("⬇️ הורדת PDF (בקרוב)", use_container_width=True):
+        st.info("בקרוב - הורדה להדפסה")
+
+with btn_col3:
+    if st.button("💬 שליחה בוואטסאפ (בקרוב)", use_container_width=True):
+        st.info("בקרוב - שליחה בוואטסאפ")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+for month in unique_months:
+    with st.expander(f"חודש {month}"):
+        month_df = df[df['Month_Name'] == month]
+        st.html(generate_html_table(month_df))
