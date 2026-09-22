@@ -82,7 +82,8 @@ def get_shabbats_for_year(hebrew_year):
                 "hebrew_date_str": hebrew_date_str,
                 "year_str": year_str,
                 "candles": candle_times.get(prev_greg, ""),
-                "havdalah": havdalah_times.get(curr_greg, "")
+                "havdalah": havdalah_times.get(curr_greg, ""),
+                "month_name": day.month_name(hebrew=True)
             })
             
     return shabbats

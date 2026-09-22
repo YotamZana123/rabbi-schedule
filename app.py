@@ -147,6 +147,7 @@ for i, sh in enumerate(shabbats):
         "Year": sh['date'].year,
         "Month": sh['date'].month,
         "Day": sh['date'].day,
+        "Month_Name": sh['month_name'],
         "פרשה/מועד": event,
         "תאריך עברי": date_str,
         "תאריך לועזי": greg_str,
@@ -215,12 +216,17 @@ def generate_html_table(df):
     html += "</tbody></table>"
     return html
 
-st.html(generate_html_table(df))
+# יצירת כרטיסיות לפי חודשים
+unique_months = df['Month_Name'].unique()
+tabs = st.tabs(list(unique_months))
 
-st.markdown("---")
+for i, tab in enumerate(tabs):
+    with tab:
+        month_df = df[df['Month_Name'] == unique_months[i]]
+        st.html(generate_html_table(month_df))
 
-# שורת כפתורי פעולה - 3 עמודות בלבד כדי למלא את כל הרוחב ביחס לטבלה
-col1, col2, col3 = st.columns(3)
+# העברת הכפתורים לסיידבר
+st.sidebar.markdown("### פעולות")
 
 @st.dialog("✏️ עריכת שיבוץ")
 def edit_dialog():
@@ -240,12 +246,11 @@ def edit_dialog():
             st.success("נשמר בהצלחה!")
             st.rerun()
 
-with col1:
-    if st.button("✏️ עריכת שיבוץ", use_container_width=True):
-        edit_dialog()
-with col2:
-    st.button("🖨️ הדפסת הלוח", use_container_width=True)
-with col3:
-    st.button("✉️ שליחת הלוח", use_container_width=True)
+if st.sidebar.button("✏️ עריכת שיבוץ", use_container_width=True):
+    edit_dialog()
 
-# Trigger Auto-Reload
+if st.sidebar.button("⬇️ הורדת PDF (בקרוב)", use_container_width=True):
+    st.sidebar.info("כפתור זה יאפשר הורדה של הלוח להדפסה.")
+
+if st.sidebar.button("💬 שליחה בוואטסאפ (בקרוב)", use_container_width=True):
+    st.sidebar.info("כפתור זה יאפשר שליחה מהירה של הלוח בוואטסאפ.")
