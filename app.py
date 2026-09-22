@@ -255,7 +255,45 @@ with btn_col3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-for month in unique_months:
-    with st.expander(f"חודש {month}"):
-        month_df = df[df['Month_Name'] == month]
-        st.html(generate_html_table(month_df))
+# יצירת אקורדיון חודשים ב-HTML נקי כדי שפתיחת חודש תסגור את הקודם
+unique_months = df['Month_Name'].unique()
+accordion_html = """
+<style>
+.month-details {
+    border: 1px solid rgba(49, 51, 63, 0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: white;
+    font-family: 'Frank Ruhl Libre', serif;
+}
+.month-summary {
+    font-weight: bold;
+    font-size: 1.1em;
+    cursor: pointer;
+    list-style: none;
+    outline: none;
+    color: #002B5B;
+}
+.month-summary::-webkit-details-marker {
+    display: none;
+}
+</style>
+"""
+
+for i, month in enumerate(unique_months):
+    month_df = df[df['Month_Name'] == month]
+    table_html = generate_html_table(month_df)
+    # החודש הראשון יהיה פתוח כברירת מחדל
+    open_attr = "open" if i == 0 else ""
+    
+    accordion_html += f"""
+    <details class="month-details" name="months_accordion" {open_attr}>
+        <summary class="month-summary">▼ חודש {month}</summary>
+        <div style="margin-top: 15px;">
+            {table_html}
+        </div>
+    </details>
+    """
+
+st.html(accordion_html)
