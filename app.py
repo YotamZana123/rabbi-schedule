@@ -3,7 +3,7 @@ import pandas as pd
 from calendar_manager import get_shabbats_for_year
 import db_manager
 import datetime
-from pyluach import hebrewcal
+from pyluach import hebrewcal, dates
 
 st.set_page_config(page_title="סבב רב", layout="wide")
 
@@ -276,11 +276,21 @@ accordion_html = """
 </style>
 """
 
+# מציאת החודש העברי הנוכחי
+today_heb = dates.HebrewDate.today()
+today_month_name = today_heb.month_name(hebrew=True)
+current_heb_year = today_heb.year
+
 for i, month in enumerate(unique_months):
     month_df = df[df['Month_Name'] == month]
     table_html = generate_html_table(month_df)
-    # החודש הראשון יהיה פתוח כברירת מחדל
-    open_attr = "open" if i == 0 else ""
+    
+    # פתיחה אוטומטית של החודש הנוכחי (אם אנחנו בשנת הלוח הנוכחית)
+    if selected_year == current_heb_year:
+        open_attr = "open" if month == today_month_name else ""
+    else:
+        # אם מסתכלים על שנה אחרת (עבר/עתיד), נפתח את החודש הראשון כברירת מחדל
+        open_attr = "open" if i == 0 else ""
     
     accordion_html += f"""
     <details class="month-details" name="months_accordion" {open_attr}>
