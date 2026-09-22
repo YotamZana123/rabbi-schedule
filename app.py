@@ -162,61 +162,60 @@ df = pd.DataFrame(data)
 
 def generate_html_table(df):
     html = """
-    <style>
-    .schedule-table { width: 100%; border-collapse: collapse; direction: rtl; font-family: 'Frank Ruhl Libre', sans-serif; }
-    .schedule-table th, .schedule-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    .schedule-table th { background-color: #002B5B; color: #D4AF37; }
-    
-    /* עיצוב רספונסיבי למובייל - הופך את השורות לכרטיסיות */
-    @media screen and (max-width: 768px) {
-        .schedule-table thead { display: none; }
-        .schedule-table, .schedule-table tbody, .schedule-table tr, .schedule-table td { display: block; width: 100%; box-sizing: border-box; }
-        .schedule-table tr { margin-bottom: 20px; border: 2px solid #002B5B; border-radius: 8px; background-color: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .schedule-table td { border: none; border-bottom: 1px solid #eee; position: relative; padding-right: 45%; text-align: left !important; min-height: 35px; }
-        .schedule-table td:before { 
-            content: attr(data-label); 
-            position: absolute; right: 10px; width: 40%; 
-            white-space: nowrap; font-weight: bold; text-align: right; color: #002B5B;
-        }
-        .schedule-table td:last-child { border-bottom: none; }
+<style>
+.schedule-table { width: 100%; border-collapse: collapse; direction: rtl; font-family: 'Frank Ruhl Libre', sans-serif; }
+.schedule-table th, .schedule-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+.schedule-table th { background-color: #002B5B; color: #D4AF37; }
+
+/* עיצוב רספונסיבי למובייל - הופך את השורות לכרטיסיות */
+@media screen and (max-width: 768px) {
+    .schedule-table thead { display: none; }
+    .schedule-table, .schedule-table tbody, .schedule-table tr, .schedule-table td { display: block; width: 100%; box-sizing: border-box; }
+    .schedule-table tr { margin-bottom: 20px; border: 2px solid #002B5B; border-radius: 8px; background-color: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .schedule-table td { border: none; border-bottom: 1px solid #eee; position: relative; padding-right: 45%; text-align: left !important; min-height: 35px; }
+    .schedule-table td:before { 
+        content: attr(data-label); 
+        position: absolute; right: 10px; width: 40%; 
+        white-space: nowrap; font-weight: bold; text-align: right; color: #002B5B;
     }
-    </style>
-    <table class="schedule-table">
-    <thead>
-        <tr>
-            <th>פרשה/מועד</th>
-            <th>תאריך עברי</th>
-            <th>תאריך לועזי</th>
-            <th>כניסה</th>
-            <th>יציאה</th>
-            <th>ליל שבת</th>
-            <th>שחרית</th>
-            <th>סעודה 3</th>
-            <th>הערות</th>
-        </tr>
-    </thead>
-    <tbody>
-    """
+    .schedule-table td:last-child { border-bottom: none; }
+}
+</style>
+<table class="schedule-table">
+<thead>
+    <tr>
+        <th>פרשה/מועד</th>
+        <th>תאריך עברי</th>
+        <th>תאריך לועזי</th>
+        <th>כניסה</th>
+        <th>יציאה</th>
+        <th>ליל שבת</th>
+        <th>שחרית</th>
+        <th>סעודה 3</th>
+        <th>הערות</th>
+    </tr>
+</thead>
+<tbody>
+"""
     for _, row in df.iterrows():
         ss_val = row["סעודה שלישית"]
-        ss_style = "background-color: #e8e8e8; color: #a0a0a0; font-weight: bold;" if ss_val == "/" else ""
-        html += f"""
-        <tr>
-            <td data-label="פרשה/מועד"><b>{row['פרשה/מועד']}</b></td>
-            <td data-label="תאריך עברי">{row['תאריך עברי']}</td>
-            <td data-label="תאריך לועזי" dir="ltr">{row['תאריך לועזי']}</td>
-            <td data-label="כניסה">{row['כניסת שבת/חג']}</td>
-            <td data-label="יציאה">{row['צאת שבת/חג']}</td>
-            <td data-label="ליל שבת">{row['ליל שבת']}</td>
-            <td data-label="שחרית">{row['שבת שחרית']}</td>
-            <td data-label="סעודה 3" style="{ss_style}">{ss_val}</td>
-            <td data-label="הערות">{row['הערות']}</td>
-        </tr>
-        """
+        ss_style = f' style="background-color: #e8e8e8; color: #a0a0a0; font-weight: bold;"' if ss_val == "/" else ""
+        html += f"""<tr>
+<td data-label="פרשה/מועד"><b>{row['פרשה/מועד']}</b></td>
+<td data-label="תאריך עברי">{row['תאריך עברי']}</td>
+<td data-label="תאריך לועזי" dir="ltr">{row['תאריך לועזי']}</td>
+<td data-label="כניסה">{row['כניסת שבת/חג']}</td>
+<td data-label="יציאה">{row['צאת שבת/חג']}</td>
+<td data-label="ליל שבת">{row['ליל שבת']}</td>
+<td data-label="שחרית">{row['שבת שחרית']}</td>
+<td data-label="סעודה 3"{ss_style}>{ss_val}</td>
+<td data-label="הערות">{row['הערות']}</td>
+</tr>
+"""
     html += "</tbody></table>"
     return html
 
-st.markdown(generate_html_table(df), unsafe_allow_html=True)
+st.html(generate_html_table(df))
 
 st.markdown("---")
 
