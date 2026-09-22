@@ -237,16 +237,31 @@ def edit_dialog():
             st.success("נשמר בהצלחה!")
             st.rerun()
 
+@st.cache_data
+def get_pdf_bytes(df, year_str):
+    import pdf_generator
+    import tempfile
+    import os
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    tmp.close()
+    pdf_generator.create_schedule_pdf(df, year_str, tmp.name)
+    with open(tmp.name, "rb") as f:
+        data = f.read()
+    os.unlink(tmp.name)
+    return data
+
 # תפריט פעולות צף (Popover) - חוסך מקום ולא נשבר בנייד
 col_space_a, col_popover, col_space_b = st.columns([1, 2, 1])
 with col_popover:
     with st.popover("⚙️ תפריט פעולות", use_container_width=True):
         if st.button("✏️ עריכת שיבוץ", use_container_width=True):
             edit_dialog()
-        if st.button("📥 הורדת PDF (בקרוב)", use_container_width=True):
-            st.info("בקרוב - הורדה להדפסה")
+            
+        pdf_bytes = get_pdf_bytes(df, str(selected_year))
+        st.download_button("📥 הורדת PDF (כל השנה)", data=pdf_bytes, file_name=f"rabbi_schedule_{selected_year}.pdf", mime="application/pdf", use_container_width=True)
+        
         if st.button("💬 שליחה בוואטסאפ (בקרוב)", use_container_width=True):
-            st.info("בקרוב - שליחה בוואטסאפ")
+            st.info("כדי לשתף עכשיו: לחץ על 'הורדת PDF' ושלח את הקובץ שיורד בוואטסאפ!")
 
 st.markdown("<br>", unsafe_allow_html=True)
 

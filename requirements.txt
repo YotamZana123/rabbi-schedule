@@ -4,3 +4,6 @@ pyluach
 openpyxl
 pytest
 requests
+
+fpdf2
+python-bidi
