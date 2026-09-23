@@ -120,28 +120,44 @@ for i, sh in enumerate(shabbats):
     else:
         # Default Logic
         if "כי תבא" in event or "כי תבוא" in event or "נצבים" in event or "וילך" in event:
-            fn, sm, ss = "", "", ""
+            fn, sm, ss = "/", "/", "/"
         elif "כיפור" in event:
             fn, sm, ss = "מרכזי", "מרכזי", "/"
         elif sh['is_mevarchim']:
             fn, sm, ss = "חב״ד", "מרכזי", "כלניות"
         elif is_saturday:
+            fn = "/"
             if month_shabbats_before == 0:
-                fn, sm, ss = "רבין/מרגלית", "אור שלום", "אהבת ישראל"
+                sm, ss = "אור שלום", "אהבת ישראל"
             elif month_shabbats_before == 1:
-                fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
+                sm, ss = "אשכנז", "נעימת חיים"
             elif month_shabbats_before == 2:
-                fn, sm, ss = "דרכי נועם", "אהבת ישראל", "דרכי נועם"
+                sm, ss = "אהבת ישראל", "דרכי נועם"
             elif month_shabbats_before == 3:
-                fn, sm, ss = "נעימת חיים", "הרשטוק", "צפוני"
+                sm, ss = "הרשטוק", "צפוני"
             else:
-                fn, sm, ss = "נעימת חיים", "תימני", "צפוני"
+                sm, ss = "תימני", "צפוני"
         else:
             fn, sm, ss = "", "", ""
             
-        # חסימת סעודה שלישית בחגים ספציפיים
-        if "ראש השנה" in event or "עצרת" in event or "שמחת תורה" in event or "פסח" in event or "שבועות" in event:
+        # שבת שבועות - ללא שיבוץ כלל
+        if "שבועות" in event and is_saturday:
+            fn, sm, ss = "/", "/", "/"
+            notes = "שבועות (ללא שיבוץ)"
+            
+        # שמיני עצרת - ללא שיבוץ כלל
+        if "עצרת" in event or "שמחת תורה" in event:
+            fn, sm, ss = "/", "/", "/"
+            notes = "שמיני עצרת (ללא שיבוץ)"
+            
+        # חסימת סעודה שלישית בחגים ספציפיים (נשארו ראש השנה ופסח)
+        if "ראש השנה" in event or "פסח" in event:
             ss = "/"
+            
+        # שבתות מיוחדות לפני פסח (לפי בקשת הרב: תזריע או מצורע)
+        if "תזריע" in event or "מצורע" in event:
+            fn, sm, ss = "/", "/", "/"
+            notes = "שבת לפני פסח (תזריע/מצורע)"
             
     data.append({
         "Year": sh['date'].year,
@@ -199,16 +215,23 @@ def generate_html_table(df):
 <tbody>
 """
     for _, row in df.iterrows():
+        fn_val = row["ליל שבת"]
+        sm_val = row["שבת שחרית"]
         ss_val = row["סעודה שלישית"]
-        ss_style = f' style="background-color: #e8e8e8; color: #a0a0a0; font-weight: bold;"' if ss_val == "/" else ""
+        
+        gray_style = ' style="background-color: #e8e8e8; color: #a0a0a0; font-weight: bold;"'
+        fn_style = gray_style if fn_val == "/" else ""
+        sm_style = gray_style if sm_val == "/" else ""
+        ss_style = gray_style if ss_val == "/" else ""
+        
         html += f"""<tr>
 <td data-label="פרשה/מועד"><b>{row['פרשה/מועד']}</b></td>
 <td data-label="תאריך עברי">{row['תאריך עברי']}</td>
 <td data-label="תאריך לועזי" dir="ltr">{row['תאריך לועזי']}</td>
 <td data-label="כניסה">{row['כניסת שבת/חג']}</td>
 <td data-label="יציאה">{row['צאת שבת/חג']}</td>
-<td data-label="ליל שבת">{row['ליל שבת']}</td>
-<td data-label="שחרית">{row['שבת שחרית']}</td>
+<td data-label="ליל שבת"{fn_style}>{fn_val}</td>
+<td data-label="שחרית"{sm_style}>{sm_val}</td>
 <td data-label="סעודה 3"{ss_style}>{ss_val}</td>
 <td data-label="הערות">{row['הערות']}</td>
 </tr>
@@ -225,9 +248,27 @@ def edit_dialog():
     if selected_event:
         row = df[df["פרשה/מועד"] == selected_event].iloc[0]
         st.write(f"**שיבוץ נוכחי ל{selected_event}:**")
-        new_fn = st.text_input("ליל שבת", value=row["ליל שבת"])
-        new_sm = st.text_input("שבת שחרית", value=row["שבת שחרית"])
-        new_ss = st.text_input("סעודה שלישית", value=row["סעודה שלישית"])
+        
+        # רשימת בתי הכנסת האפשריים + אופציה לריק (/)
+        synagogues = ["/", "אור שלום", "אשכנז", "אהבת ישראל", "הרשטוק", "תימני", "נעימת חיים", "דרכי נועם", "צפוני", "מרכזי", "רבין/מרגלית", "חב״ד", "כלניות"]
+        
+        # Helper כדי לוודא שהערך הנוכחי נמצא ברשימה (ואם לא - מוסיף אותו)
+        def get_options_and_idx(val):
+            opts = list(synagogues)
+            if not val:
+                val = "/"
+            if val not in opts:
+                opts.append(val)
+            return opts, opts.index(val)
+            
+        opts_fn, idx_fn = get_options_and_idx(row["ליל שבת"])
+        new_fn = st.selectbox("ליל שבת", options=opts_fn, index=idx_fn)
+        
+        opts_sm, idx_sm = get_options_and_idx(row["שבת שחרית"])
+        new_sm = st.selectbox("שבת שחרית", options=opts_sm, index=idx_sm)
+        
+        opts_ss, idx_ss = get_options_and_idx(row["סעודה שלישית"])
+        new_ss = st.selectbox("סעודה שלישית", options=opts_ss, index=idx_ss)
         
         if st.button("שמור שינויים", type="primary"):
             db_manager.save_assignment(
