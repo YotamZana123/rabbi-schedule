@@ -60,7 +60,7 @@ st.markdown("""
 
 st.title("סבב הרב משה ביגל שליט״א")
 
-db_manager.init_db()
+# מחקנו את init_db כי הנתונים נשמרים ישירות ב-Google Sheets
 
 # Year selector
 def format_year(y):
@@ -89,14 +89,6 @@ for i, sh in enumerate(shabbats):
         event += f" ({sh['holiday']})"
         
     notes = "שבת מברכין" if sh['is_mevarchim'] else ""
-    
-    # שבת הגדול - השבת שלפני פסח (חלה תמיד בניסן בין ה-8 ל-14 לחודש)
-    # חודש ניסן הוא חודש 1 בספריית pyluach
-    if sh['date'].month == 1 and 8 <= sh['date'].day <= 14:
-        if notes:
-            notes += " | דרשת שבת הגדול"
-        else:
-            notes = "דרשת שבת הגדול"
             
     # מציאת המיקום של השבת הנוכחית בתוך החודש העברי
     month_shabbats_before = 0
@@ -125,20 +117,17 @@ for i, sh in enumerate(shabbats):
             fn, sm, ss = "מרכזי", "מרכזי", "/"
         elif sh['is_mevarchim']:
             fn, sm, ss = "חב״ד", "מרכזי", "כלניות"
-        elif is_saturday:
-            fn = "/"
+        else: # סבב רגיל (תקף גם לשבתות וגם לחגים שנופלים באמצע השבוע)
             if month_shabbats_before == 0:
-                sm, ss = "אור שלום", "אהבת ישראל"
+                fn, sm, ss = "רבין/מרגלית", "אור שלום", "אהבת ישראל"
             elif month_shabbats_before == 1:
-                sm, ss = "אשכנז", "נעימת חיים"
+                fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
             elif month_shabbats_before == 2:
-                sm, ss = "אהבת ישראל", "דרכי נועם"
+                fn, sm, ss = "דרכי נועם", "אהבת ישראל", "דרכי נועם"
             elif month_shabbats_before == 3:
-                sm, ss = "הרשטוק", "צפוני"
+                fn, sm, ss = "נעימת חיים", "הרשטוק", "צפוני"
             else:
-                sm, ss = "תימני", "צפוני"
-        else:
-            fn, sm, ss = "", "", ""
+                fn, sm, ss = "נעימת חיים", "תימני", "צפוני"
             
         # שבת שבועות - ללא שיבוץ כלל
         if "שבועות" in event and is_saturday:
@@ -154,10 +143,10 @@ for i, sh in enumerate(shabbats):
         if "ראש השנה" in event or "פסח" in event:
             ss = "/"
             
-        # שבתות מיוחדות לפני פסח (לפי בקשת הרב: תזריע או מצורע)
-        if "תזריע" in event or "מצורע" in event:
+        # השבת שיוצאת שבועיים לפני פסח (תמיד בין א' ל-ז' בניסן - תזריע או מצורע)
+        if sh['date'].month == 1 and 1 <= sh['date'].day <= 7:
             fn, sm, ss = "/", "/", "/"
-            notes = "שבת לפני פסח (תזריע/מצורע)"
+            notes = "דרשת שבת הגדול (ללא שיבוץ)"
             
     data.append({
         "Year": sh['date'].year,
@@ -300,7 +289,7 @@ with col_edit:
 
 with col_actions:
     with st.popover("⚙️ שיתוף (PDF / וואטסאפ)", use_container_width=True):
-        pdf_bytes = get_pdf_bytes(df, str(selected_year))
+        pdf_bytes = get_pdf_bytes(df, year_str_hebrew)
         st.download_button("📥 הורדת PDF", data=pdf_bytes, file_name=f"rabbi_schedule_{selected_year}.pdf", mime="application/pdf", use_container_width=True)
         
         if st.button("💬 שליחה בוואטסאפ", use_container_width=True):
