@@ -291,17 +291,19 @@ def get_pdf_bytes(df, year_str):
     os.unlink(tmp.name)
     return data
 
-# תפריט פעולות צף (Popover) - חוסך מקום ולא נשבר בנייד
-col_space_a, col_popover, col_space_b = st.columns([1, 2, 1])
-with col_popover:
-    with st.popover("⚙️ תפריט פעולות", use_container_width=True):
-        if st.button("✏️ עריכת שיבוץ", use_container_width=True):
-            edit_dialog()
-            
+# הוצאנו את כפתור העריכה החוצה כדי שהתפריט הצף לא יסתיר אותו (באג תצוגה מובנה)
+col_edit, col_actions = st.columns(2)
+
+with col_edit:
+    if st.button("✏️ עריכת שיבוץ", use_container_width=True):
+        edit_dialog()
+
+with col_actions:
+    with st.popover("⚙️ שיתוף (PDF / וואטסאפ)", use_container_width=True):
         pdf_bytes = get_pdf_bytes(df, str(selected_year))
-        st.download_button("📥 הורדת PDF (כל השנה)", data=pdf_bytes, file_name=f"rabbi_schedule_{selected_year}.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button("📥 הורדת PDF", data=pdf_bytes, file_name=f"rabbi_schedule_{selected_year}.pdf", mime="application/pdf", use_container_width=True)
         
-        if st.button("💬 שליחה בוואטסאפ (בקרוב)", use_container_width=True):
+        if st.button("💬 שליחה בוואטסאפ", use_container_width=True):
             st.info("כדי לשתף עכשיו: לחץ על 'הורדת PDF' ושלח את הקובץ שיורד בוואטסאפ!")
 
 st.markdown("<br>", unsafe_allow_html=True)
