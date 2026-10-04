@@ -12,7 +12,7 @@ def get_shabbats_for_year(hebrew_year):
 
     
     # קריאה ל-Hebcal עבור מיתר (קואורדינטות של מיתר)
-    url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&c=on&geo=pos&latitude=31.3283&longitude=34.9387&tzid=Asia/Jerusalem&start={start_greg}&end={end_greg}'
+    url = f'https://www.hebcal.com/hebcal?v=1&cfg=json&c=on&maj=on&geo=pos&latitude=31.3283&longitude=34.9387&tzid=Asia/Jerusalem&start={start_greg}&end={end_greg}'
     try:
         res = requests.get(url).json()
         items = res.get('items', [])
@@ -44,7 +44,9 @@ def get_shabbats_for_year(hebrew_year):
         if m == 3 and d == 6: is_yom_tov = True # שבועות
         
         if is_saturday or is_yom_tov:
-            parsha_idx = parshios.getparsha(day, israel=True)
+            parsha_idx = None
+            if is_saturday:
+                parsha_idx = parshios.getparsha(day, israel=True)
             parsha_name = ""
             
             if parsha_idx is not None:

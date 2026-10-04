@@ -123,16 +123,16 @@ for i, sh in enumerate(shabbats):
             elif month_shabbats_before == 1:
                 fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
             elif month_shabbats_before == 2:
-                fn, sm, ss = "דרכי נועם", "אהבת ישראל", "דרכי נועם"
+                fn, sm, ss = "דרכי נועם", "הרשטוק", "תימני"
             elif month_shabbats_before == 3:
-                fn, sm, ss = "נעימת חיים", "הרשטוק", "צפוני"
+                fn, sm, ss = "נעימת חיים", "דרכי נועם", "צפוני"
             else:
-                fn, sm, ss = "נעימת חיים", "תימני", "צפוני"
+                fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
             
-        # שבת שבועות - ללא שיבוץ כלל
-        if "שבועות" in event and is_saturday:
-            fn, sm, ss = "/", "/", "/"
-            notes = "שבועות (ללא שיבוץ)"
+        # שבועות - שיבוץ לערב החג בלבד
+        if "שבועות" in event:
+            sm, ss = "/", "/"
+            notes = "שבועות (ערב חג בלבד)"
             
         # שמיני עצרת - ללא שיבוץ כלל
         if "עצרת" in event or "שמחת תורה" in event:
@@ -143,10 +143,10 @@ for i, sh in enumerate(shabbats):
         if "ראש השנה" in event or "פסח" in event:
             ss = "/"
             
-        # השבת שיוצאת שבועיים לפני פסח (תמיד בין א' ל-ז' בניסן - תזריע או מצורע)
+        # השבת שיוצאת שבועיים לפני פסח (תמיד בין א' ל-ז' בניסן)
         if sh['date'].month == 1 and 1 <= sh['date'].day <= 7:
-            fn, sm, ss = "/", "/", "/"
-            notes = "דרשת שבת הגדול (ללא שיבוץ)"
+            ss = "/"
+            notes = "דרשת שבת הגדול (ללא סעודה 3)"
             
     data.append({
         "Year": sh['date'].year,
@@ -296,6 +296,78 @@ with col_actions:
             st.info("כדי לשתף עכשיו: לחץ על 'הורדת PDF' ושלח את הקובץ שיורד בוואטסאפ!")
 
 st.markdown("<br>", unsafe_allow_html=True)
+
+# סיכום נוכחות בבתי הכנסת
+all_assignments = pd.concat([df["ליל שבת"], df["שבת שחרית"], df["סעודה שלישית"]]).dropna()
+counts = all_assignments.value_counts()
+counts = counts[counts.index != "/"]
+
+html_squares = """
+<style>
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+    direction: rtl;
+    font-family: 'Frank Ruhl Libre', serif;
+    margin-bottom: 20px;
+}
+.stat-box {
+    background-color: #ffffff;
+    padding: 12px 5px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.06);
+    border: 1px solid #0f2557;
+    transition: transform 0.2s;
+}
+.stat-box-title {
+    font-size: 0.95em;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #0f2557;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.stat-box-value {
+    font-size: 1.1em;
+    color: #d4af37;
+    font-weight: bold;
+}
+/* התאמה מיוחדת למובייל */
+@media screen and (max-width: 600px) {
+    .stats-container {
+        grid-template-columns: repeat(3, 1fr); /* 3 עמודות במובייל */
+        gap: 8px;
+        margin-bottom: 15px;
+    }
+    .stat-box {
+        padding: 8px 2px;
+        border-radius: 8px;
+    }
+    .stat-box-title {
+        font-size: 0.8em;
+    }
+    .stat-box-value {
+        font-size: 1em;
+    }
+}
+</style>
+<div class="stats-container">
+"""
+
+for syn, count in counts.items():
+    html_squares += f"""
+    <div class="stat-box">
+        <div class="stat-box-title" title="{syn}">{syn}</div>
+        <div class="stat-box-value">{count}</div>
+    </div>
+    """
+html_squares += "</div>"
+
+with st.expander("📊 סטטיסטיקות שיבוצים לשנה זו"):
+    st.html(html_squares)
 
 # יצירת אקורדיון חודשים ב-HTML נקי כדי שפתיחת חודש תסגור את הקודם
 unique_months = df['Month_Name'].unique()
