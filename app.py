@@ -76,19 +76,41 @@ shabbats = get_shabbats_for_year(selected_year)
 year_str_hebrew = shabbats[0]['year_str'] if shabbats else ""
 st.subheader(f"לוח שבתות וחגים לשנת {year_str_hebrew}")
 
+# איחוד שבועות עם שבת נשא כאשר שבועות נופל ביום שישי
+processed_shabbats = []
+skip_next_shabbat = False
+for i, sh in enumerate(shabbats):
+    if skip_next_shabbat:
+        skip_next_shabbat = False
+        continue
+    # אם שבועות (ו' בסיון) נופל ביום שישי (weekday == 6), נאחד אותו עם שבת נשא שלמחרת
+    if sh['date'].month == 3 and sh['date'].day == 6 and sh['date'].weekday() == 6 and (i + 1 < len(shabbats)):
+        next_sh = shabbats[i + 1]
+        combined_sh = dict(next_sh)
+        combined_sh['parsha'] = "שבועות - נשא"
+        combined_sh['hebrew_date_str'] = f"{sh['hebrew_date_str']} - {next_sh['hebrew_date_str']}"
+        combined_sh['gregorian_date_str'] = f"{sh['gregorian_date'].strftime('%d-%m')} - {next_sh['gregorian_date'].strftime('%d-%m-%Y')}"
+        combined_sh['candles'] = sh['candles'] if sh['candles'] else next_sh['candles']
+        combined_sh['havdalah'] = next_sh['havdalah']
+        combined_sh['notes'] = "שבועות ושבת"
+        processed_shabbats.append(combined_sh)
+        skip_next_shabbat = True
+    else:
+        processed_shabbats.append(sh)
+
 # We will build a list of dictionaries for the dataframe
 data = []
-for i, sh in enumerate(shabbats):
+for i, sh in enumerate(processed_shabbats):
     date_str = sh['hebrew_date_str']
-    greg_str = sh['gregorian_date'].strftime("%d-%m-%Y")
+    greg_str = sh.get('gregorian_date_str', sh['gregorian_date'].strftime("%d-%m-%Y"))
     
     event = sh['parsha']
     if not event and sh['holiday']:
         event = sh['holiday']
-    elif sh['holiday']:
+    elif sh['holiday'] and sh['holiday'] not in event:
         event += f" ({sh['holiday']})"
         
-    notes = "שבת מברכין" if sh['is_mevarchim'] else ""
+    notes = sh.get('notes', "שבת מברכין" if sh['is_mevarchim'] else "")
             
     # מציאת המיקום של השבת הנוכחית בתוך החודש העברי
     month_shabbats_before = 0
@@ -96,8 +118,8 @@ for i, sh in enumerate(shabbats):
     
     if is_saturday:
         for j in range(i - 1, -1, -1):
-            if shabbats[j]['date'].weekday() == 7:
-                if shabbats[j]['date'].month == sh['date'].month:
+            if processed_shabbats[j]['date'].weekday() == 7:
+                if processed_shabbats[j]['date'].month == sh['date'].month:
                     month_shabbats_before += 1
                 else:
                     break
@@ -120,19 +142,27 @@ for i, sh in enumerate(shabbats):
         else: # סבב רגיל (תקף גם לשבתות וגם לחגים שנופלים באמצע השבוע)
             if month_shabbats_before == 0:
                 fn, sm, ss = "רבין/מרגלית", "אור שלום", "אהבת ישראל"
-            elif month_shabbats_before == 1:
-                fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
-            elif month_shabbats_before == 2:
-                fn, sm, ss = "דרכי נועם", "הרשטוק", "תימני"
-            elif month_shabbats_before == 3:
-                fn, sm, ss = "נעימת חיים", "דרכי נועם", "צפוני"
             else:
-                fn, sm, ss = "צפוני", "אשכנז", "נעימת חיים"
-            
-        # שבועות - שיבוץ לערב החג בלבד
-        if "שבועות" in event:
-            sm, ss = "/", "/"
-            notes = "שבועות (ערב חג בלבד)"
+                # רוטציה תלת-חודשית עבור 6 בתי הכנסת: צפוני, נעימת חיים, דרכי נועם, הרשטוק, אשכנז, תימני
+                # תימני לעולם לא בסעודה שלישית (רק שישי או בוקר)
+                m = sh['date'].month
+                c_idx = m % 3
+                if c_idx == 0:
+                    w2 = ("צפוני", "תימני", "נעימת חיים")
+                    w3 = ("דרכי נועם", "הרשטוק", "אשכנז")
+                elif c_idx == 1:
+                    w2 = ("אשכנז", "דרכי נועם", "צפוני")
+                    w3 = ("תימני", "נעימת חיים", "הרשטוק")
+                else:
+                    w2 = ("נעימת חיים", "צפוני", "דרכי נועם")
+                    w3 = ("הרשטוק", "תימני", "אשכנז")
+                
+                if month_shabbats_before == 1:
+                    fn, sm, ss = w2
+                elif month_shabbats_before == 2:
+                    fn, sm, ss = w3
+                else:
+                    fn, sm, ss = w2
             
         # שמיני עצרת - ללא שיבוץ כלל
         if "עצרת" in event or "שמחת תורה" in event:
@@ -298,6 +328,10 @@ with col_actions:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # סיכום נוכחות בבתי הכנסת
+counts_fn = df["ליל שבת"].value_counts()
+counts_sm = df["שבת שחרית"].value_counts()
+counts_ss = df["סעודה שלישית"].value_counts()
+
 all_assignments = pd.concat([df["ליל שבת"], df["שבת שחרית"], df["סעודה שלישית"]]).dropna()
 counts = all_assignments.value_counts()
 counts = counts[counts.index != "/"]
@@ -306,7 +340,7 @@ html_squares = """
 <style>
 .stats-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
     direction: rtl;
     font-family: 'Frank Ruhl Libre', serif;
@@ -314,7 +348,7 @@ html_squares = """
 }
 .stat-box {
     background-color: #ffffff;
-    padding: 12px 5px;
+    padding: 10px 6px;
     border-radius: 10px;
     text-align: center;
     box-shadow: 0 3px 5px rgba(0,0,0,0.06);
@@ -324,44 +358,71 @@ html_squares = """
 .stat-box-title {
     font-size: 0.95em;
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     color: #0f2557;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .stat-box-value {
-    font-size: 1.1em;
+    font-size: 1.2em;
     color: #d4af37;
     font-weight: bold;
+    line-height: 1.1;
+}
+.stat-box-breakdown {
+    font-size: 0.8em;
+    color: #333333;
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-around;
+    border-top: 1px solid #eee;
+    padding-top: 4px;
+    direction: rtl;
+}
+.stat-pill {
+    white-space: nowrap;
 }
 /* התאמה מיוחדת למובייל */
 @media screen and (max-width: 600px) {
     .stats-container {
         grid-template-columns: repeat(3, 1fr); /* 3 עמודות במובייל */
-        gap: 8px;
+        gap: 6px;
         margin-bottom: 15px;
     }
     .stat-box {
-        padding: 8px 2px;
+        padding: 6px 2px;
         border-radius: 8px;
     }
     .stat-box-title {
-        font-size: 0.8em;
+        font-size: 0.78em;
     }
     .stat-box-value {
         font-size: 1em;
+    }
+    .stat-box-breakdown {
+        font-size: 0.7em;
+        margin-top: 2px;
+        padding-top: 2px;
     }
 }
 </style>
 <div class="stats-container">
 """
 
-for syn, count in counts.items():
+for syn, total_count in counts.items():
+    c_fn = counts_fn.get(syn, 0)
+    c_sm = counts_sm.get(syn, 0)
+    c_ss = counts_ss.get(syn, 0)
     html_squares += f"""
     <div class="stat-box">
         <div class="stat-box-title" title="{syn}">{syn}</div>
-        <div class="stat-box-value">{count}</div>
+        <div class="stat-box-value">{total_count}</div>
+        <div class="stat-box-breakdown">
+            <span class="stat-pill">ש: {c_fn}</span>
+            <span class="stat-pill">ב: {c_sm}</span>
+            <span class="stat-pill">3: {c_ss}</span>
+        </div>
     </div>
     """
 html_squares += "</div>"
