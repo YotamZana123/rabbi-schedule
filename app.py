@@ -76,33 +76,28 @@ shabbats = get_shabbats_for_year(selected_year)
 year_str_hebrew = shabbats[0]['year_str'] if shabbats else ""
 st.subheader(f"לוח שבתות וחגים לשנת {year_str_hebrew}")
 
-# איחוד שבועות עם שבת נשא כאשר שבועות נופל ביום שישי
-processed_shabbats = []
-skip_next_shabbat = False
-for i, sh in enumerate(shabbats):
-    if skip_next_shabbat:
-        skip_next_shabbat = False
-        continue
-    # אם שבועות (ו' בסיון) נופל ביום שישי (weekday == 6), נאחד אותו עם שבת נשא שלמחרת
-    if sh['date'].month == 3 and sh['date'].day == 6 and sh['date'].weekday() == 6 and (i + 1 < len(shabbats)):
-        next_sh = shabbats[i + 1]
-        combined_sh = dict(next_sh)
-        combined_sh['parsha'] = "שבועות - נשא"
-        combined_sh['hebrew_date_str'] = f"{sh['hebrew_date_str']} - {next_sh['hebrew_date_str']}"
-        combined_sh['gregorian_date_str'] = f"{sh['gregorian_date'].strftime('%d-%m')} - {next_sh['gregorian_date'].strftime('%d-%m-%Y')}"
-        combined_sh['candles'] = sh['candles'] if sh['candles'] else next_sh['candles']
-        combined_sh['havdalah'] = next_sh['havdalah']
-        combined_sh['notes'] = "שבועות ושבת"
-        processed_shabbats.append(combined_sh)
-        skip_next_shabbat = True
-    else:
-        processed_shabbats.append(sh)
+# מאגרי סבב שוויוניים לפי הנחיות הרב:
+# רק שבת בבוקר: תימני, הרשטיק, אשכנז
+morning_pool = ["תימני", "הרשטיק", "אשכנז"]
+
+# רק שישי ערב או סעודה שלישית (ללא כפילות באותה שבת): נעימת חיים, דרכי נועם, צפוני
+evening_seuda_pairs = [
+    ("נעימת חיים", "דרכי נועם"),
+    ("נעימת חיים", "צפוני"),
+    ("דרכי נועם", "נעימת חיים"),
+    ("דרכי נועם", "צפוני"),
+    ("צפוני", "דרכי נועם"),
+    ("צפוני", "נעימת חיים"),
+]
+
+morning_idx = 0
+pair_idx = 0
 
 # We will build a list of dictionaries for the dataframe
 data = []
-for i, sh in enumerate(processed_shabbats):
+for i, sh in enumerate(shabbats):
     date_str = sh['hebrew_date_str']
-    greg_str = sh.get('gregorian_date_str', sh['gregorian_date'].strftime("%d-%m-%Y"))
+    greg_str = sh['gregorian_date'].strftime("%d-%m-%Y")
     
     event = sh['parsha']
     if not event and sh['holiday']:
@@ -110,7 +105,7 @@ for i, sh in enumerate(processed_shabbats):
     elif sh['holiday'] and sh['holiday'] not in event:
         event += f" ({sh['holiday']})"
         
-    notes = sh.get('notes', "שבת מברכין" if sh['is_mevarchim'] else "")
+    notes = "שבת מברכין" if sh['is_mevarchim'] else ""
             
     # מציאת המיקום של השבת הנוכחית בתוך החודש העברי
     month_shabbats_before = 0
@@ -118,8 +113,8 @@ for i, sh in enumerate(processed_shabbats):
     
     if is_saturday:
         for j in range(i - 1, -1, -1):
-            if processed_shabbats[j]['date'].weekday() == 7:
-                if processed_shabbats[j]['date'].month == sh['date'].month:
+            if shabbats[j]['date'].weekday() == 7:
+                if shabbats[j]['date'].month == sh['date'].month:
                     month_shabbats_before += 1
                 else:
                     break
@@ -133,44 +128,37 @@ for i, sh in enumerate(processed_shabbats):
         ss = assignment['seuda_shlishit']
     else:
         # Default Logic
-        if "כי תבא" in event or "כי תבוא" in event or "נצבים" in event or "וילך" in event:
+        if any(p in event for p in ['כי תבא', 'כי תבוא', 'נצבים', 'וילך']):
             fn, sm, ss = "/", "/", "/"
         elif "כיפור" in event:
             fn, sm, ss = "מרכזי", "מרכזי", "/"
         elif sh['is_mevarchim']:
             fn, sm, ss = "חב״ד", "מרכזי", "כלניות"
-        else: # סבב רגיל (תקף גם לשבתות וגם לחגים שנופלים באמצע השבוע)
-            if month_shabbats_before == 0:
-                fn, sm, ss = "רבין/מרגלית", "אור שלום", "אהבת ישראל"
-            else:
-                # רוטציה תלת-חודשית עבור 6 בתי הכנסת: צפוני, נעימת חיים, דרכי נועם, הרשטוק, אשכנז, תימני
-                # תימני לעולם לא בסעודה שלישית (רק שישי או בוקר)
-                m = sh['date'].month
-                c_idx = m % 3
-                if c_idx == 0:
-                    w2 = ("צפוני", "תימני", "נעימת חיים")
-                    w3 = ("דרכי נועם", "הרשטוק", "אשכנז")
-                elif c_idx == 1:
-                    w2 = ("אשכנז", "דרכי נועם", "צפוני")
-                    w3 = ("תימני", "נעימת חיים", "הרשטוק")
-                else:
-                    w2 = ("נעימת חיים", "צפוני", "דרכי נועם")
-                    w3 = ("הרשטוק", "תימני", "אשכנז")
-                
-                if month_shabbats_before == 1:
-                    fn, sm, ss = w2
-                elif month_shabbats_before == 2:
-                    fn, sm, ss = w3
-                else:
-                    fn, sm, ss = w2
-            
-        # שמיני עצרת - ללא שיבוץ כלל
-        if "עצרת" in event or "שמחת תורה" in event:
+        elif "עצרת" in event or "שמחת תורה" in event:
             fn, sm, ss = "/", "/", "/"
             notes = "שמיני עצרת (ללא שיבוץ)"
+        elif "שבועות" in event:
+            # שבועות (ערב חמישי): סבב שישי בלבד, ללא בוקר וללא סעודה שלישית
+            pair = evening_seuda_pairs[pair_idx % len(evening_seuda_pairs)]
+            pair_idx += 1
+            fn = pair[0]
+            sm = "/"
+            ss = "/"
+            notes = "שבועות (תפילת ערב בלבד)"
+        elif month_shabbats_before == 0 and is_saturday:
+            # שבת ראשונה של החודש (שבת אחרי מברכין - באנקר)
+            fn, sm, ss = "רבין/מרגלית", "אור שלום", "אהבת ישראל"
+        else:
+            # סבב רגיל (שבועות 2, 3, 4...)
+            sm = morning_pool[morning_idx % len(morning_pool)]
+            morning_idx += 1
             
-        # חסימת סעודה שלישית בחגים ספציפיים (נשארו ראש השנה ופסח)
-        if "ראש השנה" in event or "פסח" in event:
+            pair = evening_seuda_pairs[pair_idx % len(evening_seuda_pairs)]
+            pair_idx += 1
+            fn, ss = pair[0], pair[1]
+            
+        # חסימת סעודה שלישית בסוכות ובפסח בלבד
+        if "סוכות" in event or "פסח" in event:
             ss = "/"
             
         # השבת שיוצאת שבועיים לפני פסח (תמיד בין א' ל-ז' בניסן)
@@ -269,7 +257,7 @@ def edit_dialog():
         st.write(f"**שיבוץ נוכחי ל{selected_event}:**")
         
         # רשימת בתי הכנסת האפשריים + אופציה לריק (/)
-        synagogues = ["/", "אור שלום", "אשכנז", "אהבת ישראל", "הרשטוק", "תימני", "נעימת חיים", "דרכי נועם", "צפוני", "מרכזי", "רבין/מרגלית", "חב״ד", "כלניות"]
+        synagogues = ["/", "אור שלום", "אשכנז", "אהבת ישראל", "הרשטיק", "תימני", "נעימת חיים", "דרכי נועם", "צפוני", "מרכזי", "רבין/מרגלית", "חב״ד", "כלניות"]
         
         # Helper כדי לוודא שהערך הנוכחי נמצא ברשימה (ואם לא - מוסיף אותו)
         def get_options_and_idx(val):
