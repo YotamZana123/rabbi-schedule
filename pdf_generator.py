@@ -25,20 +25,20 @@ def create_schedule_pdf(df, year_str, output_path):
     pdf.cell(0, 8, text=bidi_text(title), new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(2)
     
-    pdf.set_font("NotoHebrew", size=8.5)
+    pdf.set_font("NotoHebrew", size=9)
     
-    pdf_cols = ["פרשה/מועד", "תאריך", "ליל שבת", "שבת שחרית", "סעודה שלישית", "הערות"]
-    # 35 + 30 + 25 + 25 + 25 + 50 = 190
+    pdf_cols = ["פרשה/מועד", "תאריך", "ליל שבת", "שבת שחרית", "סעודה שלישית"]
+    # 42 + 38 + 36 + 36 + 38 = 190
     
     with pdf.table(
         borders_layout="ALL",
         cell_fill_color=(250, 249, 246),
         cell_fill_mode="ROWS",
-        col_widths=(35, 30, 25, 25, 25, 50),
+        col_widths=(42, 38, 36, 36, 38),
         text_align="CENTER",
         headings_style=FontFace(color=(0, 0, 0), fill_color=(230, 230, 230), emphasis=""),
-        line_height=4.2,
-        padding=0.3
+        line_height=4.5,
+        padding=0.4
     ) as table:
         header_row = table.row()
         for col in reversed(pdf_cols):

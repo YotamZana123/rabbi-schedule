@@ -132,6 +132,13 @@ for i, sh in enumerate(shabbats):
             fn, sm, ss = "/", "/", "/"
         elif "כיפור" in event:
             fn, sm, ss = "מרכזי", "מרכזי", "/"
+        elif "ראש השנה" in event:
+            if sh['date'].day == 1:
+                fn, sm, ss = "אור שלום", "מרכזי", "/"
+                notes = "ראש השנה יום א׳ (ללא סעודה 3)"
+            else:
+                fn, sm, ss = "חב״ד", "צפוני", "/"
+                notes = "ראש השנה יום ב׳ (ללא סעודה 3)"
         elif sh['is_mevarchim']:
             fn, sm, ss = "חב״ד", "מרכזי", "כלניות"
         elif "עצרת" in event or "שמחת תורה" in event:
@@ -160,6 +167,11 @@ for i, sh in enumerate(shabbats):
         # חסימת סעודה שלישית בסוכות ובפסח בלבד
         if "סוכות" in event or "פסח" in event:
             ss = "/"
+            
+        # פרשת האזינו (שבת שובה) - אין סעודה שלישית
+        if "האזינו" in event:
+            ss = "/"
+            notes = "שבת שובה (ללא סעודה 3)"
             
         # השבת שיוצאת שבועיים לפני פסח (תמיד בין א' ל-ז' בניסן)
         if sh['date'].month == 1 and 1 <= sh['date'].day <= 7:
