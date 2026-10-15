@@ -79,13 +79,13 @@ st.subheader(f"לוח שבתות וחגים לשנת {year_str_hebrew}")
 # שבת בבוקר: תימני, הרשטיק, אשכנז, אהבת ישראל
 morning_pool = ["תימני", "הרשטיק", "אשכנז", "אהבת ישראל"]
 
-# רק שישי ערב או סעודה שלישית (ללא כפילות באותה שבת): נעימת חיים, דרכי נועם, צפוני
+# רק שישי ערב או סעודה שלישית (ללא כפילות באותה שבת וללא חזרות ברצף): נעימת חיים, דרכי נועם, צפוני
 evening_seuda_pairs = [
     ("נעימת חיים", "דרכי נועם"),
-    ("נעימת חיים", "צפוני"),
     ("דרכי נועם", "נעימת חיים"),
-    ("דרכי נועם", "צפוני"),
+    ("נעימת חיים", "צפוני"),
     ("צפוני", "דרכי נועם"),
+    ("דרכי נועם", "צפוני"),
     ("צפוני", "נעימת חיים"),
 ]
 
@@ -289,12 +289,16 @@ def edit_dialog():
         new_ss = st.selectbox("סעודה שלישית", options=opts_ss, index=idx_ss)
         
         if st.button("שמור שינויים", type="primary"):
-            db_manager.save_assignment(
+            success = db_manager.save_assignment(
                 int(row["Year"]), int(row["Month"]), int(row["Day"]),
                 selected_event, new_fn, new_sm, new_ss
             )
-            st.success("נשמר בהצלחה!")
-            st.rerun()
+            if success:
+                st.cache_data.clear()
+                st.success("נשמר בהצלחה!")
+                st.rerun()
+            else:
+                st.error("שגיאה בשמירה למסד הנתונים בענן.")
 
 @st.cache_data
 def get_pdf_bytes(df, year_str):
