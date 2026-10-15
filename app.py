@@ -76,9 +76,8 @@ shabbats = get_shabbats_for_year(selected_year)
 year_str_hebrew = shabbats[0]['year_str'] if shabbats else ""
 st.subheader(f"לוח שבתות וחגים לשנת {year_str_hebrew}")
 
-# מאגרי סבב שוויוניים לפי הנחיות הרב:
-# רק שבת בבוקר: תימני, הרשטיק, אשכנז
-morning_pool = ["תימני", "הרשטיק", "אשכנז"]
+# שבת בבוקר: תימני, הרשטיק, אשכנז, אהבת ישראל
+morning_pool = ["תימני", "הרשטיק", "אשכנז", "אהבת ישראל"]
 
 # רק שישי ערב או סעודה שלישית (ללא כפילות באותה שבת): נעימת חיים, דרכי נועם, צפוני
 evening_seuda_pairs = [
